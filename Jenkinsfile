@@ -10,8 +10,12 @@ pipeline {
     }
 
     environment {
-        // Inject GCP service account JSON from Jenkins credentials
+        // GCP service account JSON stored in Jenkins credentials
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa')
+
+        // Explicitly set Terraform variables so provider can authenticate
+        TF_VAR_project_id = 'spheric-subject-482019-e5'
+        TF_VAR_region     = 'us-central1'
     }
 
     stages {
@@ -27,11 +31,11 @@ pipeline {
                     def modulePath = "modules/vm"
                     def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
-                    // Verify that terraform.tfvars exists
+                    // Sanity check: ensure terraform.tfvars exists
                     sh """
-                    echo "Checking tfvars file for ${params.ENV}..."
+                    echo "Checking for tfvars file..."
                     if [ ! -f ${envFolder}/terraform.tfvars ]; then
-                        echo "ERROR: terraform.tfvars not found!"
+                        echo "ERROR: terraform.tfvars not found in ${envFolder}!"
                         exit 1
                     fi
                     """
