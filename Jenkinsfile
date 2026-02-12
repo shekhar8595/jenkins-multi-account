@@ -9,11 +9,6 @@ pipeline {
         )
     }
 
-    tools {
-        maven 'Maven3'
-        jdk 'Java11'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -21,55 +16,29 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                echo "Building module1"
-                sh "cd module1 && mvn clean package"
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo "Running tests for module1"
-                sh "cd module1 && mvn test"
-            }
-        }
-
-        stage('Deploy') {
+        stage('Terraform Init & Plan') {
             steps {
                 script {
+                    def modulePath = "modules/vm"
                     def envFolder = "environment/${params.ENV}"
-                    def module = 'module1'
 
-                    // Maps must be inside script block, not environment block
-                    def servers = [
-                        dev : 'dev-server',
-                        uat : 'uat-server',
-                        prod: 'prod-server'
-                    ]
-                    def users = [
-                        dev : 'dev-user',
-                        uat : 'uat-user',
-                        prod: 'prod-user'
-                    ]
+                    echo "Initializing Terraform for ${params.ENV}"
+                    sh "cd ${modulePath} && terraform init -input=false -backend-config=${envFolder}/backend.tfvars"
 
-                    def server = servers[params.ENV]
-                    def user = users[params.ENV]
+                    echo "Planning Terraform deployment"
+                    sh "cd ${modulePath} && terraform plan -var-file=${envFolder}/terraform.tfvars"
+                }
+            }
+        }
 
-                    echo "Deploying ${module} to ${params.ENV} environment on ${server}"
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    def modulePath = "modules/vm"
+                    def envFolder = "environment/${params.ENV}"
 
-                    try {
-                        // Ensure target directory exists
-                        sh "ssh ${user}@${server} 'mkdir -p /opt/app/${module}/'"
-
-                        // Copy the built JAR
-                        sh "scp ${module}/target/*.jar ${user}@${server}:/opt/app/${module}/"
-
-                        // Copy environment-specific config
-                        sh "scp ${envFolder}/${module}-config.yaml ${user}@${server}:/opt/app/${module}/config.yaml"
-                    } catch (Exception e) {
-                        error "Deployment failed: ${e}"
-                    }
+                    echo "Applying Terraform configuration for ${params.ENV}"
+                    sh "cd ${modulePath} && terraform apply -auto-approve -var-file=${envFolder}/terraform.tfvars"
                 }
             }
         }
@@ -77,10 +46,10 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline for ${params.ENV} succeeded!"
+            echo "Terraform deployment for ${params.ENV} succeeded!"
         }
         failure {
-            echo "Pipeline for ${params.ENV} failed!"
+            echo "Terraform deployment for ${params.ENV} failed!"
         }
     }
 }
