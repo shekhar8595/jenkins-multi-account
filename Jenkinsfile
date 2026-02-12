@@ -1,4 +1,4 @@
-pipeline {
+\pipeline {
     agent any
 
     parameters {
@@ -10,7 +10,7 @@ pipeline {
     }
 
     environment {
-        // Use Jenkins credential ID for the GCP service account
+        // Use the service account JSON stored in Jenkins credentials
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa')
     }
 
@@ -28,11 +28,10 @@ pipeline {
                     def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
                     echo "Initializing Terraform for ${params.ENV}"
-                    sh """
-                    terraform -chdir=${modulePath} init -input=false -backend-config=${envFolder}/backend.tfvars
+                    sh "terraform -chdir=${modulePath} init -input=false -backend-config=${envFolder}/backend.tfvars"
+
                     echo "Planning Terraform deployment"
-                    terraform -chdir=${modulePath} plan -var-file=${envFolder}/terraform.tfvars
-                    """
+                    sh "terraform -chdir=${modulePath} plan -var-file=${envFolder}/terraform.tfvars"
                 }
             }
         }
@@ -47,9 +46,7 @@ pipeline {
                     def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
                     echo "Applying Terraform configuration for ${params.ENV}"
-                    sh """
-                    terraform -chdir=${modulePath} apply -auto-approve -var-file=${envFolder}/terraform.tfvars
-                    """
+                    sh "terraform -chdir=${modulePath} apply -auto-approve -var-file=${envFolder}/terraform.tfvars"
                 }
             }
         }
