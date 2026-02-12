@@ -10,13 +10,14 @@ pipeline {
     }
 
     environment {
-        // Jenkins credentials for GCP service account
+        // Jenkins credentials for GCP service account JSON
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa')
     }
 
     stages {
         stage('Checkout') {
             steps {
+                echo "Checking out code from GitHub"
                 git branch: 'main', url: 'https://github.com/shekhar8595/jenkins-multi-account.git'
             }
         }
@@ -27,11 +28,14 @@ pipeline {
                     def modulePath = "modules/vm"
                     def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
-                    // Sanity check: ensure terraform.tfvars exists
+                    echo "Checking Terraform variable files..."
                     sh """
-                    echo "Checking for tfvars file..."
                     if [ ! -f ${envFolder}/terraform.tfvars ]; then
-                        echo "ERROR: terraform.tfvars not found in ${envFolder}!"
+                        echo "ERROR: terraform.tfvars not found in ${envFolder}"
+                        exit 1
+                    fi
+                    if [ ! -f ${envFolder}/backend.tfvars ]; then
+                        echo "ERROR: backend.tfvars not found in ${envFolder}"
                         exit 1
                     fi
                     """
@@ -39,7 +43,7 @@ pipeline {
                     echo "Initializing Terraform for ${params.ENV}"
                     sh "terraform -chdir=${modulePath} init -input=false -backend-config=${envFolder}/backend.tfvars"
 
-                    echo "Planning Terraform deployment"
+                    echo "Planning Terraform deployment for ${params.ENV}"
                     sh "terraform -chdir=${modulePath} plan -var-file=${envFolder}/terraform.tfvars"
                 }
             }
@@ -54,7 +58,7 @@ pipeline {
                     def modulePath = "modules/vm"
                     def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
-                    echo "Applying Terraform configuration for ${params.ENV}"
+                    echo "Applying Terraform deployment for ${params.ENV}"
                     sh "terraform -chdir=${modulePath} apply -auto-approve -var-file=${envFolder}/terraform.tfvars"
                 }
             }
