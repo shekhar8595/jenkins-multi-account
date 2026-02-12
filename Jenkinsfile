@@ -10,12 +10,8 @@ pipeline {
     }
 
     environment {
-        // GCP service account JSON stored in Jenkins credentials
+        // Jenkins credentials for GCP service account
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa')
-
-        // Explicitly set Terraform variables so provider can authenticate
-        TF_VAR_project_id = 'spheric-subject-482019-e5'
-        TF_VAR_region     = 'us-central1'
     }
 
     stages {
