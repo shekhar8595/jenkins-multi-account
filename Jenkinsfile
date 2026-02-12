@@ -10,7 +10,7 @@ pipeline {
     }
 
     environment {
-        // Use the service account JSON stored in Jenkins credentials
+        // Inject GCP service account JSON from Jenkins credentials
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-sa')
     }
 
@@ -26,6 +26,15 @@ pipeline {
                 script {
                     def modulePath = "modules/vm"
                     def envFolder = "${WORKSPACE}/environment/${params.ENV}"
+
+                    // Verify that terraform.tfvars exists
+                    sh """
+                    echo "Checking tfvars file for ${params.ENV}..."
+                    if [ ! -f ${envFolder}/terraform.tfvars ]; then
+                        echo "ERROR: terraform.tfvars not found!"
+                        exit 1
+                    fi
+                    """
 
                     echo "Initializing Terraform for ${params.ENV}"
                     sh "terraform -chdir=${modulePath} init -input=false -backend-config=${envFolder}/backend.tfvars"
