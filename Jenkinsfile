@@ -20,25 +20,28 @@ pipeline {
             steps {
                 script {
                     def modulePath = "modules/vm"
-                    def envFolder = "environment/${params.ENV}"
+                    def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
                     echo "Initializing Terraform for ${params.ENV}"
-                    sh "cd ${modulePath} && terraform init -input=false -backend-config=${envFolder}/backend.tfvars"
+                    sh "terraform -chdir=${modulePath} init -input=false -backend-config=${envFolder}/backend.tfvars"
 
                     echo "Planning Terraform deployment"
-                    sh "cd ${modulePath} && terraform plan -var-file=${envFolder}/terraform.tfvars"
+                    sh "terraform -chdir=${modulePath} plan -var-file=${envFolder}/terraform.tfvars"
                 }
             }
         }
 
         stage('Terraform Apply') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
             steps {
                 script {
                     def modulePath = "modules/vm"
-                    def envFolder = "environment/${params.ENV}"
+                    def envFolder = "${WORKSPACE}/environment/${params.ENV}"
 
                     echo "Applying Terraform configuration for ${params.ENV}"
-                    sh "cd ${modulePath} && terraform apply -auto-approve -var-file=${envFolder}/terraform.tfvars"
+                    sh "terraform -chdir=${modulePath} apply -auto-approve -var-file=${envFolder}/terraform.tfvars"
                 }
             }
         }
